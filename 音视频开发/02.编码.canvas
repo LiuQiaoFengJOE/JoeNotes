@@ -62,7 +62,7 @@
 		{"id":"04fd0632cefab81e","type":"file","file":"音视频开发/source_video_development/Pasted image 20260618105616.png","x":3120,"y":2315,"width":400,"height":70},
 		{"id":"37d9d2c7ab466ab4","type":"file","file":"音视频开发/source_video_development/Pasted image 20260618105335.png","x":3120,"y":2208,"width":400,"height":95},
 		{"id":"54d321d0d0271e2b","type":"file","file":"音视频开发/source_video_development/Pasted image 20260618105826.png","x":3320,"y":2440,"width":759,"height":479},
-		{"id":"1bf9682b60fe389b","x":6160,"y":-2920,"width":366,"height":223,"type":"text","text":"|NAL 类型|名称|作用|\n|---|---|---|\n|5|IDR 帧|关键图像帧|\n|7|SPS|序列参数|\n|8|PPS|图像参数|\n|9|AUD|帧分隔标记|\n|1|P 帧|普通预测图像帧|"}
+		{"id":"1bf9682b60fe389b","type":"text","text":"|NAL 类型|名称|作用|\n|---|---|---|\n|5|IDR 帧|关键图像帧|\n|7|SPS|序列参数|\n|8|PPS|图像参数|\n|9|AUD|帧分隔标记|\n|1|P 帧|普通预测图像帧|","x":6160,"y":-2920,"width":366,"height":223}
 	],
 	"edges":[
 		{"id":"1f754967dd47c67f","fromNode":"a784a700614e47c9","fromSide":"bottom","toNode":"af81ff216fdf5f71","toSide":"top","color":"5","label":"ISP处理"},
