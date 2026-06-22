@@ -1,0 +1,19 @@
+{
+	"nodes":[
+		{"id":"d1bf7ecbf428b423","type":"text","text":"RGB 接口（TFT 并行接口）","x":-100,"y":-249,"width":250,"height":60},
+		{"id":"ee6139a311616c7c","type":"text","text":"LVDS（工业 / 车载主流）","x":-100,"y":-60,"width":250,"height":60},
+		{"id":"de16c8aad369dda0","type":"text","text":"SPI","x":-100,"y":40,"width":250,"height":60},
+		{"id":"a1c9bf95f2d84640","type":"text","text":"MIPI DSI","x":-100,"y":-160,"width":250,"height":60},
+		{"id":"a7d4996fa4fe3057","type":"text","text":"HDMI","x":-100,"y":140,"width":250,"height":60},
+		{"id":"31b8eacb35071960","type":"text","text":"8080","x":-100,"y":-336,"width":250,"height":60},
+		{"id":"9c5e8de5bd0bd2ce","type":"text","text":"屏幕接口类型","x":-580,"y":-100,"width":183,"height":50}
+	],
+	"edges":[
+		{"id":"7d9c1bc71d162708","fromNode":"9c5e8de5bd0bd2ce","fromSide":"right","toNode":"31b8eacb35071960","toSide":"left"},
+		{"id":"db3ed6d84deaa726","fromNode":"9c5e8de5bd0bd2ce","fromSide":"right","toNode":"d1bf7ecbf428b423","toSide":"left"},
+		{"id":"cc6b878db715707c","fromNode":"9c5e8de5bd0bd2ce","fromSide":"right","toNode":"a1c9bf95f2d84640","toSide":"left"},
+		{"id":"de5053720ae91b73","fromNode":"9c5e8de5bd0bd2ce","fromSide":"right","toNode":"ee6139a311616c7c","toSide":"left"},
+		{"id":"9f5566c94962ed6c","fromNode":"9c5e8de5bd0bd2ce","fromSide":"right","toNode":"de16c8aad369dda0","toSide":"left"},
+		{"id":"28cb7dc744320541","fromNode":"9c5e8de5bd0bd2ce","fromSide":"right","toNode":"a7d4996fa4fe3057","toSide":"left"}
+	]
+}

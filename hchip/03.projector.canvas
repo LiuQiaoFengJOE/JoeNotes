@@ -1,0 +1,6 @@
+{
+	"nodes":[
+		{"id":"65c177035b60c785","type":"text","text":"编译命令\ngit clone ssh://git@hichiptech.gitlab.com:33888/hcrtos_sdk/hcrtos.git\ncd hcrtos\ngit checkout hcrtos-2026.04.y //切换到发布分支\ngit submodule update --init --recursive\n\nrm -rf output/a7100_v10_hstudio_projector_cast\nmake SOLUTION=output/a7100_v10_hstudio_projector_cast O=output-bl hichip_hc17xx_db_a7100_v10_hstudio_projector_cast_bl_defconfig\nmake SOLUTION=output/a7100_v10_hstudio_projector_cast O=output-bl all\nmake SOLUTION=output/a7100_v10_hstudio_projector_cast hichip_hc17xx_db_a7100_v10_hstudio_projector_cast_defconfig\nmake SOLUTION=output/a7100_v10_hstudio_projector_cast all\n","x":-300,"y":-60,"width":1265,"height":467}
+	],
+	"edges":[]
+}

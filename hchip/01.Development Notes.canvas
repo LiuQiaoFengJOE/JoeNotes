@@ -1,0 +1,39 @@
+{
+	"nodes":[
+		{"id":"4615903137ab12d3","type":"group","x":-3800,"y":-6000,"width":595,"height":674,"label":"linux关闭应用后测试的方法"},
+		{"id":"708654da639d18cf","type":"group","x":-6763,"y":-6016,"width":544,"height":199,"label":"未命名组"},
+		{"id":"92c60fa3356ba2b7","type":"text","text":"编译流程(FreeRTOS版本)\n```\ngit clone ssh://git@hichiptech.gitlab.com:33888/hcrtos_sdk/hcrtos.git\ncd hcrtos\ngit submodule update --init --recursive//同步所有模块\n\nmake O=output-bl hichip_hc16xx_db_d3000_v10_projector_cast_bl_defconfig//编译bootloader，cb代表客户定制开发板，bl表示编译hcboot\nmake O=output-bl all\n\nmake hichip_hc16xx_db_d3000_v10_projector_cast_defconfig//编译到kernel(内核)+APP，不带bl代表编译SDK\nmake all\n\n```","x":-7380,"y":-6755,"width":1175,"height":440,"color":"4"},
+		{"id":"42fefc96eed926ff","type":"text","text":"初次编译后会产生一个工程目录，后续编译需要到工程目录中进行","x":-7040,"y":-6160,"width":316,"height":94},
+		{"id":"f7a33bbd73f5b34f","type":"text","text":"编译后产生output-bl和output目录","x":-6205,"y":-6805,"width":309,"height":50},
+		{"id":"35fd69a2b301409f","type":"file","file":"hchip/source_hichip/Pasted image 20260602201034.png","x":-5640,"y":-6680,"width":399,"height":215},
+		{"id":"388c1e9121837ce3","type":"text","text":"**关于编译**","x":-7380,"y":-6815,"width":250,"height":60,"color":"1"},
+		{"id":"29df9ebc9be9e0f3","type":"text","text":"Linux编译","x":-3840,"y":-6640,"width":250,"height":60,"color":"1"},
+		{"id":"2d4812bdc118bfeb","type":"text","text":"rm -rf output/build/hc-examples/\n","x":-6743,"y":-5996,"width":504,"height":60},
+		{"id":"6a7337b7b4d2a86e","type":"text","text":" make all","x":-6724,"y":-5897,"width":440,"height":60},
+		{"id":"4a1b113d5b9a07f9","type":"file","file":"hchip/source_hichip/Pasted image 20260603104407.png","x":-5720,"y":-6066,"width":400,"height":139},
+		{"id":"90f9f1ab972eb3b5","type":"text","text":"cd buildroot/output/f7100_v10_hdmi_wireless_source/\n","x":-3732,"y":-5980,"width":507,"height":54},
+		{"id":"0a803b87782afcfe","type":"text","text":"vi target/etc/inittab","x":-3732,"y":-5864,"width":405,"height":50},
+		{"id":"743481b58dc1dc37","type":"text","text":"cd target/","x":-3732,"y":-5746,"width":250,"height":60},
+		{"id":"11cce99cd2eff116","type":"text","text":"grep -rHn hdmi_net_display_test","x":-3780,"y":-5646,"width":347,"height":60},
+		{"id":"750e44ab306dc620","type":"text","text":"`代码下载`\n\n`git clone ssh://git@hichiptech.gitlab.com:33888/hclinux_sdk/hclinux.git`\n`cd hclinux`\n`git checkout hclinux-2026.05.y`\n`git pull`\n`git submodule update --init --recursive`\n\n`代码编译`\n\n`cd buildroot`\n`make O=output/f7100_v10_hdmi_wireless_source BR2_EXTERNAL=$PWD/../ hichip_hc17xx_db_f7100_v10_hdmi_wireless_source_defconfig`\n`make O=output/f7100_v10_hdmi_wireless_source all`","x":-3840,"y":-6560,"width":1200,"height":340,"color":"4"},
+		{"id":"2015d3e6602273c5","type":"file","file":"hchip/source_hichip/Pasted image 20260603191509.png","x":-1840,"y":-6359,"width":400,"height":139},
+		{"id":"92f4a1e4b8f7fe87","type":"file","file":"hchip/source_hichip/Pasted image 20260603191634.png","x":-2480,"y":-6640,"width":362,"height":400},
+		{"id":"9a291f0c9ec79e06","type":"text","text":"去除这行代码","x":-2400,"y":-6240,"width":250,"height":60},
+		{"id":"fc0936e658f1fef5","type":"text","text":"/lib/modules/4.4.186-release/extra/","x":-2923,"y":-5993,"width":463,"height":60},
+		{"id":"fb46468712cb5d9c","type":"text","text":"vi etc/init.d/S41hdmi_net_display_boot\n","x":-3732,"y":-5526,"width":427,"height":60},
+		{"id":"13a9f6b4b31d0cbd","type":"text","text":"make all\n","x":-3728,"y":-5406,"width":363,"height":60}
+	],
+	"edges":[
+		{"id":"02a25ac576c80345","fromNode":"92c60fa3356ba2b7","fromSide":"right","toNode":"35fd69a2b301409f","toSide":"left"},
+		{"id":"51f9eeba661e795e","fromNode":"35fd69a2b301409f","fromSide":"left","toNode":"f7a33bbd73f5b34f","toSide":"bottom"},
+		{"id":"89d313dd99483cf3","fromNode":"92c60fa3356ba2b7","fromSide":"bottom","toNode":"42fefc96eed926ff","toSide":"top"},
+		{"id":"282c80517e9fac55","fromNode":"92c60fa3356ba2b7","fromSide":"right","toNode":"4a1b113d5b9a07f9","toSide":"left"},
+		{"id":"97f18fb078f58bd4","fromNode":"750e44ab306dc620","fromSide":"right","toNode":"92f4a1e4b8f7fe87","toSide":"left"},
+		{"id":"43aacdcf4261e272","fromNode":"92f4a1e4b8f7fe87","fromSide":"right","toNode":"2015d3e6602273c5","toSide":"top"},
+		{"id":"8119029dd06069c9","fromNode":"90f9f1ab972eb3b5","fromSide":"bottom","toNode":"0a803b87782afcfe","toSide":"top"},
+		{"id":"dc5034a2af1377c8","fromNode":"0a803b87782afcfe","fromSide":"bottom","toNode":"743481b58dc1dc37","toSide":"top"},
+		{"id":"e9b1302fac22977d","fromNode":"743481b58dc1dc37","fromSide":"bottom","toNode":"11cce99cd2eff116","toSide":"top"},
+		{"id":"1ad33cf67f54e14b","fromNode":"11cce99cd2eff116","fromSide":"bottom","toNode":"fb46468712cb5d9c","toSide":"top"},
+		{"id":"94c02509f0d531e7","fromNode":"fb46468712cb5d9c","fromSide":"bottom","toNode":"13a9f6b4b31d0cbd","toSide":"top"}
+	]
+}

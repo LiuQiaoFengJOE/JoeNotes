@@ -1,0 +1,35 @@
+# 忽略 .obsidian 文件夹下的所有内容
+
+.obsidian/
+
+# 忽略垃圾箱中的内容
+
+.trash/
+
+# macOS 系统文件
+
+.DS_Store
+
+# Windows 系统缩略图缓存
+
+Thumbs.db
+
+# Linux 文件管理器生成的缓存
+
+.directory
+
+# 忽略 node . js 插件的依赖（如果你在库中开发插件）
+
+node_modules/
+
+# 如果你使用 Obsidian Git 插件，它可能会有临时文件
+
+.obsidian-git-log.txt
+
+# 忽略临时或备份文件
+
+*.swp
+
+*.swo
+
+*~

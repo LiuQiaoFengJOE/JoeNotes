@@ -1,0 +1,15 @@
+{
+	"nodes":[
+		{"id":"c4b579657f151892","type":"text","text":"创建套接字socket","x":320,"y":-200,"width":250,"height":60},
+		{"id":"1fbda518dd9a225f","type":"text","text":"连接流程","x":-120,"y":-200,"width":250,"height":60},
+		{"id":"33bc4d93fda51a05","x":-920,"y":-300,"width":117,"height":54,"type":"text","text":"网络协议"},
+		{"id":"c2db2a2dba0cf88e","x":-580,"y":-860,"width":250,"height":60,"type":"text","text":"TCP"},
+		{"id":"c6e84fc21677f91c","x":-600,"y":240,"width":250,"height":60,"type":"text","text":"KCP"},
+		{"id":"d39bf12f4ad133cc","type":"text","text":"TCP","x":-600,"y":-360,"width":250,"height":60}
+	],
+	"edges":[
+		{"id":"5f8943b756bb9c07","fromNode":"33bc4d93fda51a05","fromSide":"right","toNode":"c2db2a2dba0cf88e","toSide":"left"},
+		{"id":"782a6a34b727d3a7","fromNode":"33bc4d93fda51a05","fromSide":"right","toNode":"d39bf12f4ad133cc","toSide":"left"},
+		{"id":"fcf39ddda9dddf31","fromNode":"33bc4d93fda51a05","fromSide":"right","toNode":"c6e84fc21677f91c","toSide":"left"}
+	]
+}

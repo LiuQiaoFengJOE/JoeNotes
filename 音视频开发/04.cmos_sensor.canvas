@@ -1,0 +1,11 @@
+{
+	"nodes":[
+		{"id":"db1a9a68095d1329","type":"text","text":"镜头的接口类型\n","x":-820,"y":-660,"width":202,"height":55,"color":"2"},
+		{"id":"14bb62b3c76a1421","type":"text","text":"MIPI CSI-2","x":-460,"y":-760,"width":160,"height":60,"color":"4"},
+		{"id":"d2c7e81fb3d0b720","type":"text","text":"数字并行接口（DVP）","x":-460,"y":-500,"width":220,"height":60,"color":"4"}
+	],
+	"edges":[
+		{"id":"503951ee69601750","fromNode":"db1a9a68095d1329","fromSide":"right","toNode":"14bb62b3c76a1421","toSide":"left"},
+		{"id":"85c701143c5ed3c9","fromNode":"db1a9a68095d1329","fromSide":"right","toNode":"d2c7e81fb3d0b720","toSide":"left"}
+	]
+}
