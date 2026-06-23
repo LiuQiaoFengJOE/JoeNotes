@@ -8,6 +8,10 @@
 #include "platform_net.h"
 #include "rtcp.h"
 
+/*
+ * 这个结构体表示“把一份 UDP 包看成 RTP 包后，解析出来的字段”。
+ * 这样下面的重组逻辑会更清晰，不会一直拿裸指针算偏移。
+ */
 typedef struct RtpPacketView {
     uint8_t marker;
     uint8_t payload_type;
@@ -18,6 +22,10 @@ typedef struct RtpPacketView {
     size_t payload_size;
 } RtpPacketView;
 
+/*
+ * H264Depacketizer 负责把 RTP/H264 payload 重新写回 Annex-B 文件。
+ * 这里保存一些状态，方便处理 FU-A 连续分片。
+ */
 typedef struct H264Depacketizer {
     FILE *out;
     int fu_started;
@@ -26,6 +34,10 @@ typedef struct H264Depacketizer {
     uint32_t stap_a_count;
 } H264Depacketizer;
 
+/*
+ * 接收端统计信息。
+ * RR 里的丢包统计、最高序号等字段都从这里拿。
+ */
 typedef struct ReceiverStats {
     uint32_t sender_ssrc;
     uint32_t receiver_ssrc;
@@ -106,6 +118,10 @@ static int receiver_wait_for_pair(UdpEndpoint *rtcp_listener, uint32_t receiver_
 {
     uint8_t packet[256];
 
+    /*
+     * RTCP APP 握手只是教学用的“确认双方都能收发”的简化流程。
+     * 真实系统里通常是 RTSP/SDP 或别的信令流程。
+     */
     console_print_step(3, "Wait for sender pairing");
     printf("Waiting for RTCP APP PAIR/HELLO from sender...\n");
     printf("After receiving HELLO, receiver will answer PAIR/WELCOME.\n\n");
@@ -144,6 +160,10 @@ static int receiver_wait_for_pair(UdpEndpoint *rtcp_listener, uint32_t receiver_
                                        &sender_ssrc) == 0 &&
                 strcmp(app_name, "PAIR") == 0 &&
                 strcmp(text, "HELLO") == 0) {
+                /*
+                 * 收到 HELLO 后，把 RTCP 的远端地址记下来。
+                 * 这样后面 receiver 发 WELCOME、RR 时就知道往哪发。
+                 */
                 udp_endpoint_set_remote(rtcp_listener, &source);
                 printf("sender says HELLO, sender_ssrc=0x%08x\n", (unsigned)sender_ssrc);
 
@@ -171,8 +191,8 @@ static int write_annexb_nal(FILE *out, const uint8_t *nal, size_t nal_size)
     }
 
     /*
-     * RTP 里传的是“不带起始码”的 H264 NALU。
-     * .h264 Annex-B 文件里需要恢复起始码，播放器和分析工具才容易识别。
+     * RTP 里传来的 H264 NALU 不带起始码。
+     * 写回 .h264 Annex-B 文件时，需要手动补上 00 00 00 01。
      */
     if (fwrite(start_code, 1, sizeof(start_code), out) != sizeof(start_code)) {
         return -1;
@@ -200,10 +220,10 @@ static int parse_rtp_packet(const uint8_t *packet,
 
     /*
      * RTP 第 1 个字节：
-     *   bit 7..6: V，版本，必须是 2
-     *   bit 5   : P，padding，demo 不使用
-     *   bit 4   : X，扩展头标志
-     *   bit 3..0: CC，CSRC 个数
+     *   V  = 版本，必须是 2
+     *   P  = padding，本 demo 不用
+     *   X  = extension，本 demo 发端不加扩展头，但这里支持跳过
+     *   CC = CSRC 个数
      */
     version = (uint8_t)(packet[0] >> 6);
     has_extension = (uint8_t)((packet[0] >> 4) & 0x01);
@@ -218,10 +238,8 @@ static int parse_rtp_packet(const uint8_t *packet,
     }
 
     /*
-     * 如果存在 RTP extension header，格式是：
-     *   16-bit profile id
-     *   16-bit extension length，以 32-bit word 为单位
-     * demo 的发送端不会生成扩展头；这里解析跳过，是为了让接收器更完整。
+     * 如果有 RTP extension header，就把它跳过去。
+     * 这样 parse 函数更完整，也方便以后扩展。
      */
     if (has_extension) {
         uint16_t extension_words;
@@ -237,8 +255,8 @@ static int parse_rtp_packet(const uint8_t *packet,
 
     /*
      * RTP 第 2 个字节：
-     *   bit 7   : M，marker，视频里常表示一帧的最后一个 RTP 包
-     *   bit 6..0: PT，payload type。H264 常用动态类型 96。
+     *   M  = marker
+     *   PT = payload type
      */
     view->marker = (uint8_t)(packet[1] >> 7);
     view->payload_type = (uint8_t)(packet[1] & 0x7f);
@@ -261,11 +279,11 @@ static int depacketize_h264_payload(H264Depacketizer *dep,
     }
 
     /*
-     * H264 over RTP 的 payload 第一个字节仍然可以看作 NAL header。
-     * Type 决定它是哪种 RTP/H264 承载方式：
-     *   1..23: Single NAL Unit，整个 NALU 就在这个 RTP 包里
-     *   24   : STAP-A，一个 RTP 包里打包多个小 NALU
-     *   28   : FU-A，一个大 NALU 被拆成多个 RTP 包
+     * H264 over RTP 的 payload 第一个字节通常仍然能看到 NAL header。
+     * 先看 type，就知道它是：
+     *   1..23 -> 单个 NALU
+     *   24    -> STAP-A
+     *   28    -> FU-A
      */
     nal_type = (uint8_t)(rtp->payload[0] & 0x1f);
 
@@ -288,15 +306,13 @@ static int depacketize_h264_payload(H264Depacketizer *dep,
         size_t offset = 1;
 
         /*
-         * STAP-A 格式：
-         *   1 byte  STAP-A header，type=24
+         * STAP-A 会把多个小 NALU 打在一个 RTP 包里。
+         * 格式：
+         *   1 byte  STAP-A header
          *   2 bytes NALU size
          *   N bytes NALU data
          *   2 bytes NALU size
          *   N bytes NALU data
-         *   ...
-         *
-         * SPS/PPS 有时会被打到同一个 STAP-A 里。
          */
         while (offset + 2u <= rtp->payload_size) {
             uint16_t nal_size = read_be16(rtp->payload + offset);
@@ -344,17 +360,16 @@ static int depacketize_h264_payload(H264Depacketizer *dep,
         fragment_size = rtp->payload_size - 2u;
 
         /*
-         * FU-A 会把原始 NAL header 拆开保存：
-         *   FU indicator 保存 F 和 NRI，但 Type 改成 28。
-         *   FU header 保存 start/end 标志和原始 Type。
-         *
-         * 重组时要恢复原始 NAL header：
+         * FU-A 把原始 NAL header 拆掉了，所以重组时要恢复回来：
          *   F/NRI 来自 FU indicator
          *   Type 来自 FU header
          */
         reconstructed_nal_header = (uint8_t)((fu_indicator & 0xe0) | original_type);
 
         if (start_bit) {
+            /*
+             * 第一个分片：先写起始码，再写恢复后的 NAL header。
+             */
             if (fwrite(start_code, 1, sizeof(start_code), dep->out) != sizeof(start_code)) {
                 return -1;
             }
@@ -364,8 +379,8 @@ static int depacketize_h264_payload(H264Depacketizer *dep,
             dep->fu_started = 1;
         } else if (!dep->fu_started) {
             /*
-             * 如果中间分片先到了，说明前面的 start 分片丢了。
-             * 没有 NAL header 就无法恢复完整 NALU，所以丢弃这一片。
+             * 如果中间分片先到了，说明 start 分片丢了。
+             * 这时无法完整恢复 NALU，只能丢掉当前片。
              */
             printf("RTP seq=%5u -> FU-A middle fragment ignored, start fragment missing\n",
                    (unsigned)rtp->sequence);
@@ -409,9 +424,8 @@ static void update_receiver_stats(ReceiverStats *stats, const RtpPacketView *rtp
     stats->packets_received++;
 
     /*
-     * RTCP RR 里的 highest sequence number 真实规范要求“扩展序号”：
-     * 需要处理 16-bit sequence 回绕。
-     * demo 为了让新手先看懂主流程，先假设短时间测试不会回绕。
+     * RR 里的 highest sequence 需要考虑序号回绕。
+     * 这个 demo 为了先把主流程讲清楚，只假设短时间测试里不会回绕。
      */
     if (!stats->have_sequence) {
         stats->base_sequence = rtp->sequence;
@@ -513,8 +527,8 @@ int main(int argc, char **argv)
         int ret;
 
         /*
-         * 先等 RTP。这里用 20ms 超时，是为了在没有视频包时也能定期检查 RTCP。
-         * 真正产品里通常用 select/poll 同时监听多个 socket。
+         * 先等 RTP。这里用 20ms 超时，是为了即使暂时没收到视频包，
+         * 也能继续检查 RTCP。
          */
         ret = udp_endpoint_recv_from(&rtp_listener,
                                      packet,
@@ -538,8 +552,8 @@ int main(int argc, char **argv)
         }
 
         /*
-         * 再用非阻塞方式检查 RTCP。
-         * 收到发送端 SR 后，把 RTCP remote 设置成 SR 的来源地址，然后回 RR。
+         * 再非阻塞检查 RTCP。
+         * 收到 sender 的 SR 后，记住对端地址，然后回 RR。
          */
         ret = udp_endpoint_recv_from(&rtcp_listener,
                                      packet,
@@ -583,8 +597,8 @@ int main(int argc, char **argv)
         }
 
         /*
-         * 如果发送端还没发 SR，接收端不知道 RTCP 对端地址，不能主动发 RR。
-         * 一旦收到过 SR，就可以每 5 秒回一次 RR。
+         * 如果已经知道 sender 的 RTCP 地址，就每隔一段时间补发 RR。
+         * 这能让你更容易在抓包里看到双向 RTCP 流量。
          */
         if (rtcp_listener.remote_port_be != 0 &&
             platform_time_ms() - last_rr_ms >= DEMO_RTCP_SR_INTERVAL_MS) {

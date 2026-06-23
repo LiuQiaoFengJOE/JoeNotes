@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 
+/*
+ * RTCP 和 RTP 一样，包里的多字节整数都用网络字节序。
+ * 所以这里统一提供写入/读取 big-endian 整数的小工具。
+ */
 static void write_be16(uint8_t *p, uint16_t v)
 {
     p[0] = (uint8_t)(v >> 8);
@@ -42,15 +46,24 @@ int rtcp_send_sender_report(const UdpEndpoint *rtcp_endpoint,
         return -1;
     }
 
+    /*
+     * SR 里同时放 NTP 时间和 RTP timestamp。
+     * 这样接收端就知道“媒体时间”和“真实墙钟时间”的对应关系。
+     */
     platform_ntp_now(&ntp_sec, &ntp_frac);
 
     memset(packet, 0, sizeof(packet));
 
     /*
-     * RTCP Sender Report:
+     * RTCP Sender Report 固定部分：
+     *
      * byte 0: V=2, P=0, RC=0
-     * byte 1: PT=200，表示 Sender Report
-     * length: 后续 32-bit word 数量减 1。28 字节 = 7 个 word，所以 length=6。
+     *   RC 是 report count。这个 demo 的 SR 后面不带 report block，所以 RC=0。
+     *
+     * byte 1: PT=200，表示 Sender Report。
+     *
+     * length 字段单位是 32-bit word，并且“不包含第一个 32-bit header”。
+     * 这个包总长 28 字节 = 7 个 word，所以 length = 7 - 1 = 6。
      */
     packet[0] = 0x80;
     packet[1] = 200;
@@ -87,8 +100,8 @@ int rtcp_parse_sender_report(const uint8_t *packet,
     }
 
     /*
-     * RTCP length 的单位是 32-bit word，且不包含第一个 32-bit header。
-     * 所以真实包长 = (length + 1) * 4。
+     * 根据 RTCP length 计算真实包长。
+     * 加这个检查，是为了避免收到残缺 UDP 包时还继续读越界字段。
      */
     expected_size = ((size_t)length_words_minus_one + 1u) * 4u;
     if (packet_size < expected_size || expected_size < 28) {
@@ -118,9 +131,11 @@ int rtcp_send_receiver_report(const UdpEndpoint *rtcp_endpoint,
     }
 
     /*
-     * RTP sequence number 不一定从 0 开始。
-     * 例如本 demo 的发送端从 1000 开始。
-     * 所以“理论应收到包数”要用 highest - base + 1。
+     * RTP sequence 不一定从 0 开始。
+     * 本 demo 的发送端从 1000 开始，所以理论应收包数是：
+     *   highest_sequence - base_sequence + 1
+     *
+     * 完整工程还要处理 16-bit sequence 回绕，这里先简化。
      */
     if (state->highest_sequence >= state->base_sequence) {
         expected_packets = state->highest_sequence - state->base_sequence + 1u;
@@ -132,9 +147,11 @@ int rtcp_send_receiver_report(const UdpEndpoint *rtcp_endpoint,
                  : 0u;
 
     /*
-     * fraction lost 是 8-bit 定点比例：
+     * fraction lost 是 8-bit 定点数：
      *   丢包比例 * 256
-     * demo 为了简单用累计值估算。
+     *
+     * 例如丢包率 25%，fraction_lost 大约是 64。
+     * 这里为了教学用累计值估算，真实实现通常按统计周期计算。
      */
     if (expected_packets == 0) {
         fraction_lost = 0;
@@ -146,18 +163,25 @@ int rtcp_send_receiver_report(const UdpEndpoint *rtcp_endpoint,
 
     /*
      * RTCP Receiver Report:
-     * byte 0: V=2, P=0, RC=1，表示后面有 1 个 report block。
+     *
+     * byte 0: V=2, P=0, RC=1
+     *   RC=1 表示后面跟 1 个 report block。
+     *
      * byte 1: PT=201，表示 Receiver Report。
-     * length: 32 字节 = 8 个 word，所以 length=7。
+     *
+     * 总长 32 字节 = 8 个 word，所以 length = 8 - 1 = 7。
      */
     packet[0] = 0x81;
     packet[1] = 201;
     write_be16(&packet[2], 7);
 
-    /* RR 包发送者自己的 SSRC。 */
+    /* 先写 RR 发送者自己的 SSRC，也就是 receiver 的 SSRC。 */
     write_be32(&packet[4], state->receiver_ssrc);
 
-    /* report block: 我正在汇报“我收到 sender_ssrc 的情况”。 */
+    /*
+     * report block 表示：
+     * “我正在汇报自己接收 sender_ssrc 这个源时看到的情况”。
+     */
     write_be32(&packet[8], state->sender_ssrc);
     packet[12] = fraction_lost;
     packet[13] = (uint8_t)((lost_packets >> 16) & 0xff);
@@ -167,8 +191,11 @@ int rtcp_send_receiver_report(const UdpEndpoint *rtcp_endpoint,
     write_be32(&packet[20], state->jitter);
 
     /*
-     * LSR/DLSR 用于更精确 RTT 计算。
-     * demo 暂不计算，填 0，但保留字段位置让你知道真实协议有它们。
+     * LSR/DLSR 可用于计算 RTT：
+     * - LSR：最近一次收到的 SR 时间戳摘要
+     * - DLSR：收到 SR 到发送 RR 的延迟
+     *
+     * 本 demo 暂不计算 RTT，所以填 0，但保留字段位置。
      */
     write_be32(&packet[24], 0);
     write_be32(&packet[28], 0);
@@ -203,17 +230,17 @@ int rtcp_send_app_message(const UdpEndpoint *rtcp_endpoint,
      *   4 bytes name，例如 "PAIR"
      *   N bytes application data
      *
-     * RTCP 包总长度必须是 32-bit 对齐，所以 text 后面补 0。
+     * RTCP 总长度必须是 32-bit 对齐，所以 text 后面要补 0。
      */
-    app_data_len = text_len + 1u; /* 带字符串结束符，解析时更直观。 */
+    app_data_len = text_len + 1u;
     while ((12u + app_data_len) % 4u != 0u) {
         app_data_len++;
     }
     packet_size = 12u + app_data_len;
 
     memset(packet, 0, sizeof(packet));
-    packet[0] = 0x80;     /* V=2, P=0, subtype=0 */
-    packet[1] = 204;      /* PT=204, APP */
+    packet[0] = 0x80;
+    packet[1] = 204;
     write_be16(&packet[2], (uint16_t)(packet_size / 4u - 1u));
     write_be32(&packet[4], ssrc);
     for (i = 0; i < 4u; ++i) {

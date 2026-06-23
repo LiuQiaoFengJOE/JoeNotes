@@ -13,14 +13,14 @@ typedef enum H264ReadResult {
 } H264ReadResult;
 
 /*
- * 从 Annex-B H264 文件中读取下一个 NALU。
+ * 从 Annex-B H264 文件里读取下一个 NALU。
  *
- * Annex-B 的 NALU 前面有起始码：
+ * Annex-B 码流用起始码分隔 NALU：
  *   00 00 01
- * 或：
+ * 或
  *   00 00 00 01
  *
- * 返回的 nal_buf 不包含起始码，只包含 NAL header + RBSP/EBSP 数据。
+ * 返回的 nal_buf 不包含起始码，只包含 NAL header + 数据。
  */
 H264ReadResult h264_annexb_read_next_nal(FILE *fp,
                                          uint8_t *nal_buf,
@@ -31,4 +31,3 @@ const char *h264_nal_type_name(uint8_t nal_type);
 int h264_nal_is_vcl(uint8_t nal_type);
 
 #endif
-

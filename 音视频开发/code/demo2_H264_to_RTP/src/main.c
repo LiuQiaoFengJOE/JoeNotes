@@ -80,6 +80,10 @@ static int sender_pair_with_receiver(UdpEndpoint *rtcp_endpoint, uint32_t sender
     uint64_t last_hello_ms = 0;
     uint8_t packet[256];
 
+    /*
+     * 这个 demo 额外加了一个 APP 握手，目的是让新手看清楚“RTCP 也能带自定义控制消息”。
+     * 真正工程里通常会用 RTSP/SDP、信令服务器或更完整的会话管理。
+     */
     console_print_step(3, "Pair with receiver by RTCP APP");
     printf("Sender will send RTCP APP PAIR/HELLO.\n");
     printf("Receiver should answer RTCP APP PAIR/WELCOME.\n");
@@ -91,6 +95,11 @@ static int sender_pair_with_receiver(UdpEndpoint *rtcp_endpoint, uint32_t sender
         UdpPacketSource source;
         int ret;
 
+        /*
+         * 每隔 1 秒重发一次 HELLO。
+         * 为什么要重发？
+         * 因为 UDP 不保证对方一定收到，学习阶段用“重复尝试”最直观。
+         */
         if (platform_time_ms() - last_hello_ms >= 1000u) {
             if (rtcp_send_app_message(rtcp_endpoint, sender_ssrc, "PAIR", "HELLO") != 0) {
                 fprintf(stderr, "failed to send RTCP APP HELLO\n");
@@ -153,6 +162,10 @@ int main(int argc, char **argv)
     int exit_code = 1;
     int interactive = (argc == 1);
 
+    /*
+     * 交互模式下让新手直接在终端里输入参数。
+     * 命令行模式则更适合脚本和批处理。
+     */
     if (interactive) {
         sender_interactive_config(input_file_buf,
                                   sizeof(input_file_buf),
@@ -193,6 +206,10 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /*
+     * RTP timestamp 的步长要和 fps 对应。
+     * 视频常用 90000Hz 时钟：25fps 时每帧步长就是 90000 / 25 = 3600。
+     */
     timestamp_step = DEMO_RTP_CLOCK_RATE / fps;
 
     console_print_step(2, "Open input file and UDP sockets");
@@ -231,12 +248,13 @@ int main(int argc, char **argv)
     if (udp_endpoint_open(&rtp_endpoint, dest_ip, rtp_port) != 0) {
         goto cleanup_net;
     }
+
     /*
-     * RTCP 要使用同一个 UDP socket 完成“发送 SR”和“接收 RR”。
+     * RTCP 要使用同一个 UDP socket 完成“发 SR”和“收 RR”。
      *
-     * 原因：
-     * - UDP 没有连接，接收端回 RR 时会回到 SR 包的源 IP/源端口。
-     * - 如果发送端用临时端口发 SR，却在另一个端口等 RR，就收不到回包。
+     * 为什么？
+     * UDP 没有连接，接收端收到 SR 后，会把 RR 回到 SR 的源地址和源端口。
+     * 如果发送端发 SR 用临时端口，却在另一个端口等 RR，就收不到回包。
      *
      * 所以这里先 bind 固定本地 RTCP 端口，再设置远端 RTCP 地址。
      */
@@ -248,8 +266,9 @@ int main(int argc, char **argv)
     }
 
     /*
-     * SSRC 是 RTP 同步源标识。真实设备一般随机生成，保证同一个会话里唯一。
-     * demo 固定它，方便 Wireshark 观察。
+     * SSRC 是 RTP 会话里的同步源标识。
+     * 真正设备里通常随机生成，确保同一会话内唯一。
+     * 这里固定一个值，方便 Wireshark 观察。
      */
     rtp_h264_session_init(&rtp_session,
                           &rtp_endpoint,
@@ -273,6 +292,10 @@ int main(int argc, char **argv)
         int is_vcl;
         int marker;
 
+        /*
+         * 从 Annex-B 文件里读出一个完整 NALU。
+         * 返回的数据不带起始码，后面可以直接塞进 RTP。
+         */
         read_result = h264_annexb_read_next_nal(fp, nal_buf, DEMO_MAX_NAL_SIZE, &nal_size);
         if (read_result == H264_READ_EOF) {
             printf("\nend of file\n");
@@ -293,12 +316,12 @@ int main(int argc, char **argv)
         is_vcl = h264_nal_is_vcl(nal_type);
 
         /*
-         * RTP marker bit 正常表示“一个访问单元/一帧的最后一个 RTP 包”。
-         * 裸 H264 文件不一定容易判断完整帧边界。为了教学简单：
-         * - SPS/PPS/SEI/AUD 等非图像 NALU marker=0。
-         * - 图像切片 NALU marker=1，表示这个 NALU 结束。
+         * marker bit 常被用来标记“一帧最后一个 RTP 包”。
+         * 这里为了教学简单：
+         * - SPS/PPS/SEI/AUD 等非图像 NALU：marker=0
+         * - 图像切片 NALU：marker=1
          *
-         * 如果你的编码器明确告诉你一帧包含多个 slice，应只在最后一个 slice 置 marker=1。
+         * 如果一个真实编码器一帧里有多个 slice，严格做法是只给最后一个 slice 置 1。
          */
         marker = is_vcl ? 1 : 0;
 
@@ -314,6 +337,14 @@ int main(int argc, char **argv)
             goto cleanup_net;
         }
 
+        /*
+         * 每隔固定时间发一次 RTCP SR。
+         * SR 的作用是告诉接收端：
+         * 1. 我是谁（SSRC）
+         * 2. 现在的墙钟时间是多少（NTP）
+         * 3. 当前对应的 RTP timestamp 是多少
+         * 4. 我已经发了多少包和多少字节
+         */
         if (platform_time_ms() - last_rtcp_ms >= DEMO_RTCP_SR_INTERVAL_MS) {
             RtcpSenderState sr_state;
             sr_state.ssrc = rtp_session.ssrc;
@@ -331,14 +362,12 @@ int main(int argc, char **argv)
         }
 
         /*
-         * 发送端也监听自己的 RTCP 端口。
+         * 发送端也顺手监听自己的 RTCP 端口。
+         * 正常 RTP 会话里：
+         * - sender 周期性发 SR
+         * - receiver 周期性发 RR
          *
-         * 在真实 RTP 会话里：
-         * - 发送端周期性发送 SR(Sender Report)
-         * - 接收端周期性发送 RR(Receiver Report)
-         *
-         * RR 会告诉发送端：接收端最高收到了哪个序号、估计丢包多少。
-         * demo 暂不完整解析 RR 的所有字段，只打印包类型让你看到链路闭环。
+         * 这里不做完整 RR 解析，只打印包类型，让你先看到“回路是通的”。
          */
         {
             uint8_t rtcp_packet[1500];
@@ -357,6 +386,10 @@ int main(int argc, char **argv)
             }
         }
 
+        /*
+         * 真实流媒体里，timestamp 通常和真实帧率对齐；
+         * 这里用 sleep 模拟一个比较稳定的发送节奏。
+         */
         if (is_vcl) {
             rtp_h264_add_timestamp(&rtp_session, timestamp_step);
             platform_sleep_ms(1000u / fps);

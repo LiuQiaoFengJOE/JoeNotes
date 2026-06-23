@@ -79,10 +79,8 @@ int udp_endpoint_bind(UdpEndpoint *endpoint, uint16_t local_port)
     }
 
     /*
-     * 绑定本地端口，接收端必须做这一步。
-     *
-     * 发送端如果不 bind，系统会自动分配一个临时端口；
-     * 接收端如果不 bind，就没有固定端口给别人发包。
+     * 监听端必须 bind 本地端口。
+     * 否则操作系统会给它分配一个临时端口，外面就不知道往哪个端口发包了。
      */
     memset(&local_addr, 0, sizeof(local_addr));
     local_addr.sin_family = AF_INET;
@@ -119,8 +117,8 @@ int udp_endpoint_set_remote_ip_port(UdpEndpoint *endpoint, const char *ip, uint1
     }
 
     /*
-     * 为了兼容较老的 MinGW，这里使用 inet_addr()。
-     * demo 只接收 IPv4 点分十进制地址，例如 127.0.0.1。
+     * 这里用 inet_addr 主要是为了兼容老一些的 MinGW 环境。
+     * demo 只接受 IPv4 点分十进制地址。
      */
     addr = inet_addr(ip);
     if (addr == INADDR_NONE) {
@@ -186,11 +184,7 @@ int udp_endpoint_recv_from(const UdpEndpoint *endpoint,
 
     /*
      * select() 用来做“带超时的等待”。
-     *
-     * timeout_ms = 0  表示立刻检查一次，不阻塞。
-     * timeout_ms > 0  表示最多等这么久。
-     *
-     * Windows 的 select() 第一个参数会被忽略；Linux/Unix 需要 fd+1。
+     * timeout_ms = 0 表示立刻检查一次，不阻塞。
      */
     FD_ZERO(&read_set);
     FD_SET(endpoint->fd, &read_set);
@@ -204,7 +198,7 @@ int udp_endpoint_recv_from(const UdpEndpoint *endpoint,
     ready = select(endpoint->fd + 1, &read_set, NULL, NULL, tv_ptr);
 #endif
     if (ready == 0) {
-        return 1; /* timeout */
+        return 1;
     }
     if (ready < 0) {
         fprintf(stderr, "select() failed\n");
@@ -223,12 +217,8 @@ int udp_endpoint_recv_from(const UdpEndpoint *endpoint,
         int error_code = WSAGetLastError();
         if (error_code == WSAECONNRESET) {
             /*
-             * Windows UDP 的一个特殊点：
-             * 如果我们给某个 UDP 端口发过包，而对方端口随后关闭，
-             * Windows 可能在下一次 recvfrom() 返回 WSAECONNRESET。
-             *
-             * UDP 本身没有连接，这里并不是“TCP 连接断开”。
-             * 对本 demo 来说，把它当成一次没有收到数据即可。
+             * Windows 下 UDP 可能会把“对方端口不可达”映射成 WSAECONNRESET。
+             * 对这个 demo 来说，我们把它当成一次普通超时/空收包即可。
              */
             return 1;
         }
@@ -265,10 +255,6 @@ void udp_endpoint_close(UdpEndpoint *endpoint)
 uint64_t platform_time_ms(void)
 {
 #ifdef _WIN32
-    /*
-     * GetTickCount() 约 49.7 天回绕一次。demo 只用于短时间调试，
-     * 这样写能兼容更多 MinGW/Windows SDK。
-     */
     return (uint64_t)GetTickCount();
 #else
     struct timeval tv;

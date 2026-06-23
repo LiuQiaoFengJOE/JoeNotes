@@ -3,8 +3,10 @@
 /*
  * 这是一个教学用 Annex-B 读取器。
  *
- * 为了让逻辑更容易读，它使用 fgetc() 逐字节扫描起始码。
- * PC 调试没有问题；移植到小平台或高码率产品时，可以改成环形缓冲区读取。
+ * 它的目标不是极致性能，而是让你直观看懂：
+ * 1. 怎么在文件里找起始码
+ * 2. 怎么把一个 NALU 完整切出来
+ * 3. 为什么返回的数据不包含起始码
  */
 
 static int find_start_code(FILE *fp)
@@ -12,6 +14,14 @@ static int find_start_code(FILE *fp)
     int ch;
     int zero_count = 0;
 
+    /*
+     * Annex-B 起始码一般是：
+     *   00 00 01
+     * 或
+     *   00 00 00 01
+     *
+     * 这里逐字节扫描，遇到连续 2 个及以上 0，后面跟 1，就认为找到了起始码。
+     */
     while ((ch = fgetc(fp)) != EOF) {
         if (ch == 0x00) {
             zero_count++;
@@ -57,8 +67,8 @@ H264ReadResult h264_annexb_read_next_nal(FILE *fp,
     }
 
     /*
-     * 已经越过起始码，现在开始收集 NALU 内容。
-     * 当再次遇到 00 00 01 或 00 00 00 01 时，说明下一个 NALU 开始。
+     * 找到起始码后，开始收集 NALU 内容。
+     * 一旦再次遇到起始码，就说明当前 NALU 到头了。
      */
     while ((ch = fgetc(fp)) != EOF) {
         if (ch == 0x00) {
@@ -72,12 +82,9 @@ H264ReadResult h264_annexb_read_next_nal(FILE *fp,
 
         if (ch == 0x01 && zero_count >= 2) {
             /*
-             * 刚刚读到的是下一个起始码的最后一个字节 0x01。
-             * 前面的 2 个或更多 0x00 已经被放进 nal_buf，需要从当前 NALU 中删掉。
-             *
-             * 注意：这里必须把文件指针退回到这个起始码开头。
-             * 否则下一次调用会从起始码后面继续找，直接跳过一个 NALU。
-             * 这个 demo 面向普通 .h264 文件，所以可以使用 fseek()。
+             * 刚读到的是下一个起始码的末尾 0x01。
+             * 需要把多写进去的 0x00 从当前 NALU 里回退掉，
+             * 并把文件指针退回，让下一次调用还能看到这个起始码。
              */
             size -= (size_t)zero_count;
             if (fseek(fp, -(long)(zero_count + 1), SEEK_CUR) != 0) {
@@ -100,8 +107,8 @@ H264ReadResult h264_annexb_read_next_nal(FILE *fp,
     }
 
     /*
-     * 文件结尾也是一个 NALU 的结束。
-     * 末尾填充的 0x00 不属于有效 NALU 时，这里保守地去掉。
+     * 文件结尾也可能正好是最后一个 NALU 的结束。
+     * 尾部多出来的 0x00 不算有效数据，保守地去掉。
      */
     while (size > 0 && nal_buf[size - 1] == 0x00) {
         size--;
@@ -126,6 +133,6 @@ const char *h264_nal_type_name(uint8_t nal_type)
 
 int h264_nal_is_vcl(uint8_t nal_type)
 {
-    /* VCL NALU 承载真正的视频图像切片。1-5 都属于 VCL。 */
+    /* VCL NALU 承载真正的视频图像切片。1..5 都属于 VCL。 */
     return nal_type >= 1 && nal_type <= 5;
 }

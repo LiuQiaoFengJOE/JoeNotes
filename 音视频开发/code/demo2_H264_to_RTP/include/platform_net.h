@@ -6,8 +6,8 @@
 
 #ifdef _WIN32
 /*
- * inet_pton() 和 GetTickCount64() 需要 Vista 及以上 Windows API 声明。
- * 这里放在 winsock/windows 头文件之前，MinGW 才能看到正确声明。
+ * 某些 Windows API 需要在包含 winsock/windows 头文件前先声明目标版本。
+ * 这里保守设成 Vista 及以上，方便使用 inet_pton / GetTickCount64 等接口。
  */
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
@@ -31,9 +31,7 @@ typedef struct UdpEndpoint {
 
 /*
  * UDP 收包时记录“这个包是谁发来的”。
- *
- * 字段名里的 be 表示 big-endian/network byte order，也就是网络字节序。
- * socket API 里 IP 地址和端口通常都用网络字节序保存。
+ * 字段名里的 be 表示 big-endian / network byte order，也就是网络字节序。
  */
 typedef struct UdpPacketSource {
     uint32_t ip_be;
@@ -60,8 +58,8 @@ uint64_t platform_time_ms(void);
 void platform_sleep_ms(uint32_t ms);
 
 /*
- * 获取 NTP 时间戳，用于 RTCP Sender Report。
- * NTP timestamp = 1900 年以来的秒 + 小数秒。
+ * 获取 NTP 时间戳，供 RTCP Sender Report 使用。
+ * NTP 时间 = 1900 年以来的秒数 + 小数秒。
  */
 void platform_ntp_now(uint32_t *ntp_sec, uint32_t *ntp_frac);
 
