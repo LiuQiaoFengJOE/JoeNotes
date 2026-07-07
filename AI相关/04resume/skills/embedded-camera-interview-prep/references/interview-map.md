@@ -4,6 +4,8 @@
 
 Use this reference to keep embedded camera interview preparation complete, balanced, and realistic for small-to-mid experience candidates.
 
+When the user wants the complete stored question bank with answer-style material, also read `full-interview-question-bank.md`.
+
 ## Must-Cover Domains
 
 1. Linux fundamentals

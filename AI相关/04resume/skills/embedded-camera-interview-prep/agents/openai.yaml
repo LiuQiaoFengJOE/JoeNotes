@@ -1,4 +1,4 @@
 interface:
   display_name: "Embedded Camera Interview Prep"
   short_description: "Prepare embedded Linux camera interview question banks"
-  default_prompt: "Use $embedded-camera-interview-prep to turn my resume into a 20K embedded camera interview package."
+  default_prompt: "Use $embedded-camera-interview-prep to turn my resume into a senior-level 20K embedded audio-video interview package."
