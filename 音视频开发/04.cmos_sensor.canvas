@@ -1,13 +1,41 @@
 {
 	"nodes":[
-		{"id":"db1a9a68095d1329","type":"text","text":"镜头的接口类型\n","x":-820,"y":-660,"width":202,"height":55,"color":"2"},
-		{"id":"14bb62b3c76a1421","type":"text","text":"MIPI CSI-2","x":-460,"y":-760,"width":160,"height":60,"color":"4"},
-		{"id":"d2c7e81fb3d0b720","type":"text","text":"数字并行接口（DVP）","x":-460,"y":-500,"width":220,"height":60,"color":"4"},
-		{"id":"787e3eb9f4b93711","x":-780,"y":-180,"width":250,"height":60,"type":"text","text":"ISP调试"}
+		{"id":"787e3eb9f4b93711","type":"text","text":"ISP / IQ 调试的标准流程","x":-780,"y":1020,"width":250,"height":60},
+		{"id":"798b2e5877fe0052","type":"text","text":"Sensor 上电、I2C 通\n时钟、MIPI/DVP、分辨率、fps 正常\n画面无花屏、无丢帧、无错行、无异常噪点\n能抓到 RAW，且 Bayer pattern、bit depth、黑电平基本正确","x":20,"y":790,"width":522,"height":140},
+		{"id":"f075a353bf83d01a","type":"text","text":"先点亮并确认 RAW 正常","x":-380,"y":930,"width":250,"height":60},
+		{"id":"4aa95316d3734442","type":"text","text":"BLC / 黑电平\nDPC / 坏点\nLSC / Lens Shading暗角\n基础去马赛克效果","x":40,"y":992,"width":397,"height":169},
+		{"id":"2e450bd57f2c57c1","type":"text","text":"AWB\nCCM\nGamma\nSaturation / Contrast","x":40,"y":1191,"width":363,"height":142},
+		{"id":"abe97b73130ca8b4","type":"text","text":"先调静态基础项","x":-380,"y":1091,"width":250,"height":60},
+		{"id":"a6808d4cf040ef59","type":"text","text":"再调颜色链","x":-380,"y":1262,"width":250,"height":60},
+		{"id":"af3a96917f81cc39","type":"text","text":"再调曝光链","x":-380,"y":1440,"width":250,"height":60},
+		{"id":"6a9d93320841da49","type":"text","text":"再调细节和噪声","x":-380,"y":1600,"width":250,"height":60},
+		{"id":"8d9805315f421d90","type":"text","text":"再看视频动态表现","x":-380,"y":1760,"width":250,"height":60},
+		{"id":"598232d8b98123ec","type":"text","text":"目标是“亮度稳定、切换自然、不过曝不过暗”：\nAE target\n曝光时间 / 模拟增益 / 数字增益策略\n50/60Hz 防频闪\n逆光 / WDR / HDR 策略","x":40,"y":1391,"width":403,"height":158},
+		{"id":"14bb62b3c76a1421","type":"text","text":"MIPI CSI-2","x":-120,"y":-720,"width":160,"height":60,"color":"4"},
+		{"id":"d2c7e81fb3d0b720","type":"text","text":"数字并行接口（DVP）","x":-120,"y":-460,"width":220,"height":60,"color":"4"},
+		{"id":"db1a9a68095d1329","type":"text","text":"镜头的接口类型\n","x":-440,"y":-580,"width":202,"height":55,"color":"2"},
+		{"id":"43dcbe0ce6246d59","type":"text","text":"镜头驱动","x":-780,"y":-585,"width":250,"height":60},
+		{"id":"27f625a03dbf6ee7","type":"text","text":"这一步最容易“调过头”：\n2D/3D NR\nSharpen\nEdge enhancement\n低照度下噪声与拖影平衡","x":40,"y":1583,"width":378,"height":154},
+		{"id":"ac050b48457f3d66","type":"text","text":"静态图好看，不代表视频好：\nAE 收敛速度\nAWB 切换稳定性\n明暗切换闪变\n运动拖影\n夜景噪声 pumping","x":40,"y":1790,"width":443,"height":164},
+		{"id":"fb6caa91c35da8ee","type":"text","text":"[相机 - 树莓派文档](https://www.raspberrypi.com/documentation/accessories/camera.html#camera-module-3)","x":-1220,"y":1027,"width":200,"height":50}
 	],
 	"edges":[
 		{"id":"503951ee69601750","fromNode":"db1a9a68095d1329","fromSide":"right","toNode":"14bb62b3c76a1421","toSide":"left"},
 		{"id":"85c701143c5ed3c9","fromNode":"db1a9a68095d1329","fromSide":"right","toNode":"d2c7e81fb3d0b720","toSide":"left"},
-		{"id":"9f3439617aa970db","fromNode":"db1a9a68095d1329","fromSide":"bottom","toNode":"787e3eb9f4b93711","toSide":"top"}
+		{"id":"e7608eb3309a426a","fromNode":"f075a353bf83d01a","fromSide":"right","toNode":"798b2e5877fe0052","toSide":"left"},
+		{"id":"b467b487e6036692","fromNode":"787e3eb9f4b93711","fromSide":"right","toNode":"f075a353bf83d01a","toSide":"left"},
+		{"id":"dd4385c4be3c1536","fromNode":"f075a353bf83d01a","fromSide":"bottom","toNode":"abe97b73130ca8b4","toSide":"top"},
+		{"id":"3954cbae22a12e0d","fromNode":"abe97b73130ca8b4","fromSide":"bottom","toNode":"a6808d4cf040ef59","toSide":"top"},
+		{"id":"b7cfe2ce8f943d57","fromNode":"a6808d4cf040ef59","fromSide":"bottom","toNode":"af3a96917f81cc39","toSide":"top"},
+		{"id":"6ed230784658ded8","fromNode":"6a9d93320841da49","fromSide":"bottom","toNode":"8d9805315f421d90","toSide":"top"},
+		{"id":"212d7b926e90c7d5","fromNode":"abe97b73130ca8b4","fromSide":"right","toNode":"4aa95316d3734442","toSide":"left"},
+		{"id":"5d5959cb6faa552c","fromNode":"a6808d4cf040ef59","fromSide":"right","toNode":"2e450bd57f2c57c1","toSide":"left"},
+		{"id":"ae55f74c79bf1e55","fromNode":"af3a96917f81cc39","fromSide":"bottom","toNode":"6a9d93320841da49","toSide":"top"},
+		{"id":"8d30fb2c7854b8fa","fromNode":"af3a96917f81cc39","fromSide":"right","toNode":"598232d8b98123ec","toSide":"left"},
+		{"id":"7c2df8ba7d6b3650","fromNode":"43dcbe0ce6246d59","fromSide":"right","toNode":"db1a9a68095d1329","toSide":"left"},
+		{"id":"ff6a4d67ff3a99c3","fromNode":"43dcbe0ce6246d59","fromSide":"bottom","toNode":"787e3eb9f4b93711","toSide":"top"},
+		{"id":"8ce56e7a07556499","fromNode":"6a9d93320841da49","fromSide":"right","toNode":"27f625a03dbf6ee7","toSide":"left"},
+		{"id":"8da40e27ac7501e5","fromNode":"8d9805315f421d90","fromSide":"right","toNode":"ac050b48457f3d66","toSide":"left"},
+		{"id":"bdafb363c6872c48","fromNode":"787e3eb9f4b93711","fromSide":"left","toNode":"fb6caa91c35da8ee","toSide":"right"}
 	]
 }
