@@ -1,0 +1,218 @@
+Simplified MIPI CSI-2 RAW10 frame stream
+Binary file: out_mipi_csi2_sensor_like_raw10.bin
+
+Whole stream hex dump:
+00 01 00 01 02 00 00 02 2B 14 00 3F D0 0D D6 17 
+AA DD 21 E4 2B AA EA 35 F1 3F AA F8 49 FE 53 AA 
+60 0B 03 00 00 03 02 01 00 03 2B 14 00 3F 06 4B 
+10 50 66 1A 55 24 5A 66 2E 5F 38 64 66 42 69 4C 
+6E 66 C4 05 03 01 00 02 02 02 00 00 2B 14 00 3F 
+E8 31 EE 3B AA F5 45 FC 4F AA 02 59 09 63 BB 10 
+6D 16 77 BB 62 09 03 02 00 01 02 03 00 01 2B 14 
+00 3F 2A 5D 34 62 66 3E 67 48 6C 66 52 71 5C 76 
+66 66 7B 70 80 66 74 07 03 03 00 00 02 04 00 06 
+2B 14 00 3F 00 55 06 5F BB 0D 69 14 73 BB 1A 7D 
+21 87 BB 28 91 2E 9B BB 64 07 03 04 00 07 02 05 
+00 07 2B 14 00 3F 4E 6F 58 74 66 62 79 6C 7E 66 
+76 83 80 88 66 8A 8D 94 92 66 24 09 03 05 00 06 
+01 01 00 00 
+
+Packet-by-packet layout:
+[offset 0000] Frame Start
+  header:
+    data_id         = 0x00
+    word_count_lsb  = 0x01
+    word_count_msb  = 0x00
+    ecc             = 0x01
+  short_data/value  = 1
+
+[offset 0004] Line Start
+  header:
+    data_id         = 0x02
+    word_count_lsb  = 0x00
+    word_count_msb  = 0x00
+    ecc             = 0x02
+  short_data/value  = 0
+
+[offset 0008] RAW10 Long Packet
+  header:
+    data_id         = 0x2B
+    word_count_lsb  = 0x14
+    word_count_msb  = 0x00
+    ecc             = 0x3F
+  payload (20 bytes):
+D0 0D D6 17 AA DD 21 E4 2B AA EA 35 F1 3F AA F8 
+49 FE 53 AA 
+  footer crc (demo): 60 0B
+  unpacked raw10 pixels (16):
+     720  525  726  535  733  545  740  555  746  565  753  575  760  585  766  595 
+
+[offset 0034] Line End
+  header:
+    data_id         = 0x03
+    word_count_lsb  = 0x00
+    word_count_msb  = 0x00
+    ecc             = 0x03
+  short_data/value  = 0
+
+[offset 0038] Line Start
+  header:
+    data_id         = 0x02
+    word_count_lsb  = 0x01
+    word_count_msb  = 0x00
+    ecc             = 0x03
+  short_data/value  = 1
+
+[offset 0042] RAW10 Long Packet
+  header:
+    data_id         = 0x2B
+    word_count_lsb  = 0x14
+    word_count_msb  = 0x00
+    ecc             = 0x3F
+  payload (20 bytes):
+06 4B 10 50 66 1A 55 24 5A 66 2E 5F 38 64 66 42 
+69 4C 6E 66 
+  footer crc (demo): C4 05
+  unpacked raw10 pixels (16):
+     518  331  528  336  538  341  548  346  558  351  568  356  578  361  588  366 
+
+[offset 0068] Line End
+  header:
+    data_id         = 0x03
+    word_count_lsb  = 0x01
+    word_count_msb  = 0x00
+    ecc             = 0x02
+  short_data/value  = 1
+
+[offset 0072] Line Start
+  header:
+    data_id         = 0x02
+    word_count_lsb  = 0x02
+    word_count_msb  = 0x00
+    ecc             = 0x00
+  short_data/value  = 2
+
+[offset 0076] RAW10 Long Packet
+  header:
+    data_id         = 0x2B
+    word_count_lsb  = 0x14
+    word_count_msb  = 0x00
+    ecc             = 0x3F
+  payload (20 bytes):
+E8 31 EE 3B AA F5 45 FC 4F AA 02 59 09 63 BB 10 
+6D 16 77 BB 
+  footer crc (demo): 62 09
+  unpacked raw10 pixels (16):
+     744  561  750  571  757  581  764  591  770  601  777  611  784  621  790  631 
+
+[offset 0102] Line End
+  header:
+    data_id         = 0x03
+    word_count_lsb  = 0x02
+    word_count_msb  = 0x00
+    ecc             = 0x01
+  short_data/value  = 2
+
+[offset 0106] Line Start
+  header:
+    data_id         = 0x02
+    word_count_lsb  = 0x03
+    word_count_msb  = 0x00
+    ecc             = 0x01
+  short_data/value  = 3
+
+[offset 0110] RAW10 Long Packet
+  header:
+    data_id         = 0x2B
+    word_count_lsb  = 0x14
+    word_count_msb  = 0x00
+    ecc             = 0x3F
+  payload (20 bytes):
+2A 5D 34 62 66 3E 67 48 6C 66 52 71 5C 76 66 66 
+7B 70 80 66 
+  footer crc (demo): 74 07
+  unpacked raw10 pixels (16):
+     554  349  564  354  574  359  584  364  594  369  604  374  614  379  624  384 
+
+[offset 0136] Line End
+  header:
+    data_id         = 0x03
+    word_count_lsb  = 0x03
+    word_count_msb  = 0x00
+    ecc             = 0x00
+  short_data/value  = 3
+
+[offset 0140] Line Start
+  header:
+    data_id         = 0x02
+    word_count_lsb  = 0x04
+    word_count_msb  = 0x00
+    ecc             = 0x06
+  short_data/value  = 4
+
+[offset 0144] RAW10 Long Packet
+  header:
+    data_id         = 0x2B
+    word_count_lsb  = 0x14
+    word_count_msb  = 0x00
+    ecc             = 0x3F
+  payload (20 bytes):
+00 55 06 5F BB 0D 69 14 73 BB 1A 7D 21 87 BB 28 
+91 2E 9B BB 
+  footer crc (demo): 64 07
+  unpacked raw10 pixels (16):
+     768  597  774  607  781  617  788  627  794  637  801  647  808  657  814  667 
+
+[offset 0170] Line End
+  header:
+    data_id         = 0x03
+    word_count_lsb  = 0x04
+    word_count_msb  = 0x00
+    ecc             = 0x07
+  short_data/value  = 4
+
+[offset 0174] Line Start
+  header:
+    data_id         = 0x02
+    word_count_lsb  = 0x05
+    word_count_msb  = 0x00
+    ecc             = 0x07
+  short_data/value  = 5
+
+[offset 0178] RAW10 Long Packet
+  header:
+    data_id         = 0x2B
+    word_count_lsb  = 0x14
+    word_count_msb  = 0x00
+    ecc             = 0x3F
+  payload (20 bytes):
+4E 6F 58 74 66 62 79 6C 7E 66 76 83 80 88 66 8A 
+8D 94 92 66 
+  footer crc (demo): 24 09
+  unpacked raw10 pixels (16):
+     590  367  600  372  610  377  620  382  630  387  640  392  650  397  660  402 
+
+[offset 0204] Line End
+  header:
+    data_id         = 0x03
+    word_count_lsb  = 0x05
+    word_count_msb  = 0x00
+    ecc             = 0x06
+  short_data/value  = 5
+
+[offset 0208] Frame End
+  header:
+    data_id         = 0x01
+    word_count_lsb  = 0x01
+    word_count_msb  = 0x00
+    ecc             = 0x00
+  short_data/value  = 1
+
+What the stream contains:
+1. Frame Start short packet
+2. Line Start short packet
+3. RAW10 long packet carrying pixel payload
+4. Line End short packet
+5. Frame End short packet
+
+In real hardware, LP/HS switching and lane-level serialization happen before the receiver sees this byte-stream form.
