@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Anti-Flicker Explanation - 3B1B Style</title>
+    <style>
+        /* 引入类似Latex的字体 */
+        @import url('https://fonts.googleapis.com/css2?family=Latin+Modern+Math&family=Noto+Sans+SC:wght@300;500&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #F0F2F5; /* 3B1B 经典的浅色背景 */
+            font-family: 'Latin Modern Math', 'Noto Sans SC', serif;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            background-color: #F0F2F5;
+        }
+
+        /* 电影感遮罩与字幕容器 */
+        .overlay {
+            position: absolute;
+            bottom: 5%;
+            width: 80%;
+            text-align: center;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .subtitle-cn {
+            font-size: 24px;
+            color: #333;
+            font-weight: 500;
+            text-shadow: 0 2px 4px rgba(255,255,255,0.8);
+            margin-bottom: 8px;
+        }
+
+        .subtitle-en {
+            font-size: 16px;
+            color: #555;
+            font-style: italic;
+            font-family: 'Latin Modern Math', serif;
+        }
+
+        /* 进度条 */
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background-color: #3498DB;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        
+        /* 加载提示 */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container">
+    <canvas id="mainCanvas"></canvas>
+    <div class="overlay">
+        <div class="subtitle-cn" id="sub-cn"></div>
+        <div class="subtitle-en" id="sub-en"></div>
+    </div>
+    <div class="progress-bar" id="progressBar"></div>
+    <div id="loading">Loading Animation...</div>
+</div>
+
+<script>
+/**
+ * 3B1B Style Camera Anti-Flicker Animation
+ * Logic based on Rolling Shutter & AC Frequency integration
+ */
+
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+const subCn = document.getElementById('sub-cn');
+const subEn = document.getElementById('sub-en');
+const progressBar = document.getElementById('progressBar');
+const loading = document.getElementById('loading');
+
+// Configuration
+const CONFIG = {
+    width: 1920,
+    height: 1080,
+    duration: 85 * 1000, // 85 seconds total duration
+    colors: {
+        bg: '#F0F2F5',
+        text: '#333333',
+        grid: '#E0E0E0',
+        accentBlue: '#3498DB', // 3B1B Blue
+        accentYellow: '#F1C40F', // 3B1B Yellow
+        accentRed: '#E74C3C', // 3B1B Red
+        accentGreen: '#2ECC71',
+        darkTeal: '#1ABC9C'
+    }
+};
+
+// State
+let startTime = null;
+let isPlaying = false;
+
+// Audio simulation (Subtitles timeline)
+const SCRIPT = [
+    { t: 0, cn: "你是否在拍摄屏幕或室内灯光时，见过这种恼人的条纹？", en: "Have you ever seen these annoying stripes when shooting screens or indoor lights?" },
+    { t: 5000, cn: "这就是‘频闪’（Flicker）。要理解并消除它，我们需要了解光的本质。", en: "This is 'Flicker'. To understand and remove it, we need to look at the nature of light." },
+    { t: 10000, cn: "我们使用的交流电（AC）并非恒定，而是呈正弦波变化。", en: "The AC electricity we use isn't constant; it fluctuates as a sine wave." },
+    { t: 15000, cn: "通常频率为50Hz。但灯光的亮度取决于电压的绝对值。", en: "Usually at 50Hz. But light intensity depends on the absolute voltage." },
+    { t: 20000, cn: "这意味着灯光实际上每秒闪烁100次（明暗变化）。", en: "This means the light actually pulses 100 times per second (100Hz)." },
+    { t: 26000, cn: "现在，让我们看看相机的传感器是如何工作的：卷帘快门。", en: "Now, let's look at how a camera sensor works: The Rolling Shutter." },
+    { t: 32000, cn: "CMOS传感器并不是一次性拍下整张照片，而是逐行扫描。", en: "CMOS sensors don't capture the whole image at once; they scan row by row." },
+    { t: 38000, cn: "当扫描过程遇到光线变化时，问题就出现了。", en: "The problem arises when the scanning process meets the changing light." },
+    { t: 44000, cn: "有些行在光亮时曝光，有些行在光暗时曝光。", en: "Some rows expose when it's bright, others when it's dark." },
+    { t: 50000, cn: "结果就是画面上出现了明暗相间的条纹。", en: "The result is alternating light and dark bands on your image." },
+    { t: 56000, cn: "如何解决？数学给了我们答案：积分。", en: "How to fix it? Math gives us the answer: Integration." },
+    { t: 62000, cn: "每一行的亮度，等于曝光时间内光强曲线下的面积。", en: "The brightness of each row equals the area under the light curve during exposure." },
+    { t: 68000, cn: "如果曝光时间不是光周期的整数倍，面积就会随开始时间变化。", en: "If exposure time isn't a multiple of the light period, the area fluctuates." },
+    { t: 74000, cn: "只要将快门速度设为光周期的整数倍（如1/100秒），条纹就会消失。", en: "Set shutter speed to a multiple of the light period (e.g., 1/100s), and stripes vanish." },
+    { t: 81000, cn: "这就是抗频闪功能的算法原理。", en: "This is the algorithmic principle behind Anti-Flicker." }
+];
+
+// Helper: Resize Canvas
+function resize() {
+    const container = document.getElementById('canvas-container');
+    const aspect = CONFIG.width / CONFIG.height;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    
+    let finalW, finalH;
+    if (w / h > aspect) {
+        finalH = h;
+        finalW = h * aspect;
+    } else {
+        finalW = w;
+        finalH = w / aspect;
+    }
+
+    // Handle High DPI
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = CONFIG.width * dpr;
+    canvas.height = CONFIG.height * dpr;
+    canvas.style.width = `${finalW}px`;
+    canvas.style.height = `${finalH}px`;
+    ctx.scale(dpr, dpr);
+}
+
+// Helper: Easing
+function easeInOutCubic(t) {
+    return t < .5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+}
+
+// Drawing Primitives
+function drawGrid(ctx, opacity = 1) {
+    ctx.save();
+    ctx.globalAlpha = opacity * 0.3;
+    ctx.strokeStyle = CONFIG.colors.grid;
+    ctx.lineWidth = 2;
+    const step = 100;
+    
+    for(let x=0; x<=CONFIG.width; x+=step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, CONFIG.height);
+        ctx.stroke();
+    }
+    for(let y=0; y<=CONFIG.height; y+=step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(CONFIG.width, y);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawSineWave(ctx, t, yOffset, amplitude, freq, color, phaseShift = 0, isSquared = false) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 5;
+    
+    const startX = 100;
+    const endX = CONFIG.width - 100;
+    
+    for (let x = startX; x <= endX; x++) {
+        // Map x to time domain
+        const timeMap = (x - startX) * 0.02 + t * 5; 
+        let val;
+        if (isSquared) {
+            // Light Intensity = sin^2
+            val = Math.pow(Math.sin(freq * timeMap + phaseShift), 2);
+            // Invert so 1 is up
+            val = -val; 
+        } else {
+            // Voltage = sin
+            val = Math.sin(freq * timeMap + phaseShift);
+        }
+        
+        const y = yOffset + val * amplitude;
+        
+        if (x === startX) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    
+    // Label
+    ctx.fillStyle = color;
+    ctx.font = "bold 30px 'Latin Modern Math'";
+    ctx.fillText(isSquared ? "Light Intensity (Brightness)" : "AC Voltage", startX, yOffset - amplitude - 20);
+    
+    ctx.restore();
+}
+
+function drawCameraSensor(ctx, progress, yOffset) {
+    ctx.save();
+    const w = 400;
+    const h = 300;
+    const x = CONFIG.width/2 - w/2;
+    const y = yOffset - h/2;
+    
+    // Sensor Body
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 4;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+    
+    // Grid inside sensor
+    ctx.strokeStyle = "#eee";
+    ctx.lineWidth = 1;
+    for(let i=0; i<h; i+=20) {
+        ctx.beginPath();
+        ctx.moveTo(x, y+i);
+        ctx.lineTo(x+w, y+i);
+        ctx.stroke();
+    }
+
+    // Scan Line
+    const scanY = y + (progress % 1) * h;
+    ctx.strokeStyle = CONFIG.colors.accentRed;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - 20, scanY);
+    ctx.lineTo(x + w + 20, scanY);
+    ctx.stroke();
+    
+    ctx.fillStyle = CONFIG.colors.accentRed;
+    ctx.font = "20px sans-serif";
+    ctx.fillText("Readout Line", x + w + 30, scanY + 5);
+    
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "center";
+    ctx.font = "bold 24px 'Latin Modern Math'";
+    ctx.fillText("CMOS Sensor (Rolling Shutter)", CONFIG.width/2, y + h + 40);
+    
+    ctx.restore();
+}
+
+function drawBandingDemo(ctx, time, yOffset) {
+    ctx.save();
+    const w = 600;
+    const h = 400;
+    const x = CONFIG.width/2 - w/2;
+    const y = yOffset;
+    
+    // Draw Photo Frame
+    ctx.fillStyle = "#000";
+    ctx.fillRect(x-10, y-10, w+20, h+20);
+    
+    // Draw Content (Simulated Photo)
+    // For each row, calculate brightness based on sine wave at that specific time
+    const imageData = ctx.createImageData(w, h);
+    const data = imageData.data;
+    
+    const freq = 0.2; // Frequency of light
+    const scanSpeed = 2.0; // Speed of rolling shutter
+    
+    for (let row = 0; row < h; row++) {
+        // Time when this row is exposed
+        // time = global_time + row_delay
+        const rowTime = time + (row / h) * scanSpeed;
+        
+        // Light intensity at this moment (sin^2)
+        // Add a base brightness so it's not pitch black
+        const brightness = 0.4 + 0.6 * Math.pow(Math.sin(rowTime * 10), 2);
+        
+        const r = 240 * brightness;
+        const g = 240 * brightness;
+        const b = 240 * brightness;
+        
+        for (let col = 0; col < w; col++) {
+            const index = (row * w + col) * 4;
+            data[index] = r;
+            data[index + 1] = g;
+            data[index + 2] = b;
+            data[index + 3] = 255;
+        }
+    }
+    
+    // We need to put ImageData onto a temp canvas to draw it scaled if needed, 
+    // but here we just put it directly.
+    // Note: createImageData creates pixels, we need to map to canvas coord.
+    // To keep it simple in this render loop, we'll draw rectangles for bands (faster for vector animation style)
+    
+    // Vector approach for better performance and style matching:
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x, y, w, h);
+    
+    // Create clipping region
+    ctx.beginPath();
+    ctx.rect(x,y,w,h);
+    ctx.clip();
+    
+    const numberOfBands = 5;
+    const bandOffset = (time * 200) % (h/numberOfBands * 2); 
+    
+    for(let i = -1; i < numberOfBands * 2; i++) {
+        const bandY = y + i * (h/numberOfBands) + bandOffset;
+        const opacity = 0.3; // Darkness of the band
+        ctx.fillStyle = `rgba(0,0,0,${opacity})`;
+        
+        // Draw a soft gradient rect for the band
+        const grad = ctx.createLinearGradient(0, bandY, 0, bandY + (h/numberOfBands));
+        grad.addColorStop(0, "rgba(0,0,0,0)");
+        grad.addColorStop(0.5, "rgba(0,0,0,0.5)");
+        grad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, bandY, w, h/numberOfBands);
+    }
+    
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(x, y, w, h);
+    
+    ctx.restore();
+}
+
+function drawIntegrationMath(ctx, time, centerX, centerY, exposureTimeCorrect) {
+    ctx.save();
+    
+    // Draw Axis
+    const axisWidth = 800;
+    const axisHeight = 300;
+    const startX = centerX - axisWidth/2;
+    const startY = centerY + axisHeight/2;
+    
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY - axisHeight - 20); // Y axis top
+    ctx.lineTo(startX, startY); // Origin
+    ctx.lineTo(startX + axisWidth + 20, startY); // X axis right
+    ctx.stroke();
+    
+    // Labels
+    ctx.font = "24px 'Latin Modern Math'";
+    ctx.fillStyle = "#333";
+    ctx.fillText("Time (t)", startX + axisWidth, startY + 30);
+    ctx.fillText("Intensity I(t)", startX - 20, startY - axisHeight - 30);
+    
+    // Draw Light Curve (sin^2)
+    ctx.beginPath();
+    ctx.strokeStyle = CONFIG.colors.accentBlue;
+    ctx.lineWidth = 4;
+    
+    const freq = 0.05;
+    const amp = 200;
+    
+    for(let x = 0; x <= axisWidth; x++) {
+        const val = Math.pow(Math.sin((x) * freq), 2);
+        const plotX = startX + x;
+        const plotY = startY - val * amp;
+        if(x===0) ctx.moveTo(plotX, plotY);
+        else ctx.lineTo(plotX, plotY);
+    }
+    ctx.stroke();
+    
+    // Draw Exposure Window (Sliding)
+    // The window slides representing different rows being exposed at different start times
+    const slideSpeed = 50;
+    const windowStartX = (time * slideSpeed) % (axisWidth - 200);
+    
+    // Exposure width: 
+    // If correct (Anti-flicker), width = period (PI/freq).
+    // If incorrect, width = random.
+    const periodPixels = Math.PI / freq; 
+    const windowWidth = exposureTimeCorrect ? periodPixels : periodPixels * 0.7;
+    
+    const windowEndX = windowStartX + windowWidth;
+    
+    // Highlight Area
+    ctx.fillStyle = exposureTimeCorrect ? "rgba(46, 204, 113, 0.5)" : "rgba(231, 76, 60, 0.5)";
+    ctx.beginPath();
+    ctx.moveTo(startX + windowStartX, startY);
+    
+    // Trace curve for area
+    for(let x = windowStartX; x <= windowEndX; x++) {
+        const val = Math.pow(Math.sin((x) * freq), 2);
+        ctx.lineTo(startX + x, startY - val * amp);
+    }
+    
+    ctx.lineTo(startX + windowEndX, startY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw Window bracket
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 2;
+    const bracketY = startY + 15;
+    ctx.beginPath();
+    ctx.moveTo(startX + windowStartX, startY + 5);
+    ctx.lineTo(startX + windowStartX, bracketY);
+    ctx.lineTo(startX + windowEndX, bracketY);
+    ctx.lineTo(startX + windowEndX, startY + 5);
+    ctx.stroke();
+    
+    ctx.textAlign = "center";
+    ctx.fillText(exposureTimeCorrect ? "Exposure = T (1/100s)" : "Exposure ≠ T", startX + windowStartX + windowWidth/2, bracketY + 25);
+    
+    // Show Resulting Brightness (Area)
+    // Approximate integral
+    // Integral of sin^2(x) dx = x/2 - sin(2x)/4
+    // We want Area(t, t+w)
+    const F = (x) => (x/2 - Math.sin(2*x)/4);
+    const radStart = windowStartX * freq;
+    const radEnd = windowEndX * freq;
+    const area = (F(radEnd) - F(radStart)) * amp; // Scaled
+    
+    // Visual bar for brightness result
+    const barX = startX + axisWidth + 80;
+    const barMaxH = 200;
+    const barH = (area / (periodPixels * freq * amp / 2)) * 100; // Normalize roughly
+    
+    ctx.fillStyle = "#333";
+    ctx.fillText("Pixel Brightness", barX, startY + 30);
+    
+    // Background bar
+    ctx.fillStyle = "#eee";
+    ctx.fillRect(barX - 20, startY - barMaxH, 40, barMaxH);
+    
+    // Actual brightness
+    ctx.fillStyle = exposureTimeCorrect ? CONFIG.colors.accentGreen : CONFIG.colors.accentRed;
+    ctx.fillRect(barX - 20, startY - barH, 40, barH);
+    
+    // Fluctuation indicator
+    if (!exposureTimeCorrect) {
+        ctx.fillStyle = CONFIG.colors.accentRed;
+        ctx.font = "italic 20px 'Latin Modern Math'";
+        ctx.fillText("Fluctuating!", barX, startY - barMaxH - 20);
+    } else {
+        ctx.fillStyle = CONFIG.colors.accentGreen;
+        ctx.font = "bold 20px 'Latin Modern Math'";
+        ctx.fillText("Constant!", barX, startY - barMaxH - 20);
+    }
+
+    ctx.restore();
+}
+
+function drawTitle(ctx, text, subtext, opacity) {
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.textAlign = "center";
+    ctx.fillStyle = CONFIG.colors.text;
+    
+    ctx.font = "bold 80px 'Latin Modern Math'";
+    ctx.fillText(text, CONFIG.width/2, CONFIG.height/2 - 20);
+    
+    if(subtext) {
+        ctx.font = "40px 'Latin Modern Math'";
+        ctx.fillStyle = "#666";
+        ctx.fillText(subtext, CONFIG.width/2, CONFIG.height/2 + 60);
+    }
+    ctx.restore();
+}
+
+// Main Animation Loop
+function animate(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+    
+    // Clear
+    ctx.clearRect(0, 0, CONFIG.width, CONFIG.height);
+    
+    // Update Subtitles
+    const currentScript = SCRIPT.slice().reverse().find(s => elapsed >= s.t);
+    if(currentScript) {
+        subCn.innerText = currentScript.cn;
+        subEn.innerText = currentScript.en;
+    }
+    
+    // Update Progress Bar
+    const progressPct = Math.min((elapsed / CONFIG.duration) * 100, 100);
+    progressBar.style.width = `${progressPct}%`;
+    
+    // SCENE MANAGEMENT
+    
+    // 1. Intro (0 - 5s)
+    if (elapsed < 5000) {
+        drawGrid(ctx, 0.5);
+        const opacity = Math.min(elapsed / 1000, 1);
+        drawBandingDemo(ctx, elapsed/1000, CONFIG.height/2 - 200);
+        
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = "#fff"; // Background for text to pop over demo
+        ctx.shadowColor="rgba(0,0,0,0.5)";
+        ctx.shadowBlur=20;
+        ctx.font = "bold 60px 'Latin Modern Math'";
+        ctx.textAlign = "center";
+        ctx.fillText("The Flicker Problem", CONFIG.width/2, 200);
+        ctx.restore();
+    }
+    // 2. AC Power & Light (5s - 26s)
+    else if (elapsed < 26000) {
+        drawGrid(ctx);
+        const localTime = (elapsed - 5000) / 1000;
+        
+        // Phase 1: Voltage
+        const showVoltage = Math.min(localTime, 1);
+        ctx.globalAlpha = showVoltage;
+        drawSineWave(ctx, localTime, 300, 150, 1, CONFIG.colors.accentBlue, 0, false);
+        
+        // Phase 2: Light Intensity (Squared)
+        if (localTime > 5) {
+            const trans = Math.min((localTime - 5), 1);
+            ctx.globalAlpha = trans;
+            // Draw below
+            drawSineWave(ctx, localTime, 700, 150, 1, CONFIG.colors.accentYellow, 0, true);
+            
+            // Connecting Arrow
+            if (trans > 0.5) {
+                ctx.beginPath();
+                ctx.strokeStyle = "#999";
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 10]);
+                ctx.moveTo(CONFIG.width/2, 450);
+                ctx.lineTo(CONFIG.width/2, 550);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = "#666";
+                ctx.font = "italic 24px serif";
+                ctx.fillText("Squaring (Absolute Value)", CONFIG.width/2 + 20, 500);
+            }
+        }
+        
+        // Frequency Text
+        if (localTime > 10) {
+            ctx.fillStyle = CONFIG.colors.text;
+            ctx.textAlign = "right";
+            ctx.font = "40px 'Latin Modern Math'";
+            ctx.fillText("AC: 50Hz", CONFIG.width - 150, 300);
+            ctx.fillText("Light: 100Hz", CONFIG.width - 150, 700);
+        }
+    }
+    // 3. Rolling Shutter Mechanism (26s - 40s)
+    else if (elapsed < 40000) {
+        drawGrid(ctx);
+        const localTime = (elapsed - 26000) / 1000;
+        
+        drawTitle(ctx, "The Rolling Shutter", "", Math.max(0, 1 - localTime));
+        
+        if (localTime > 1) {
+            drawCameraSensor(ctx, localTime * 0.5, CONFIG.height/2);
+            
+            // Explanatory text
+            ctx.fillStyle = "#555";
+            ctx.textAlign = "left";
+            ctx.font = "30px 'Latin Modern Math'";
+            const textX = CONFIG.width/2 + 300;
+            const textY = CONFIG.height/2 - 100;
+            
+            if (localTime > 3) ctx.fillText("• Row 1 exposes at t=0", textX, textY);
+            if (localTime > 5) ctx.fillText("• Row N exposes at t=Δt", textX, textY + 50);
+            if (localTime > 7) ctx.fillText("• Time Gap exists!", textX, textY + 100);
+        }
+    }
+    // 4. Interaction / The Problem (40s - 56s)
+    else if (elapsed < 56000) {
+        drawGrid(ctx);
+        const localTime = (elapsed - 40000) / 1000;
+        
+        // Left: Light Wave
+        ctx.save();
+        ctx.translate(-400, 0); // Shift wave left
+        drawSineWave(ctx, localTime, CONFIG.height/2, 100, 2, CONFIG.colors.accentYellow, 0, true);
+        ctx.restore();
+        
+        // Right: Photo Result
+        drawBandingDemo(ctx, localTime, CONFIG.height/2 - 200);
+        
+        // Connector
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(400, CONFIG.height/2);
+        ctx.lineTo(CONFIG.width/2 - 300, CONFIG.height/2);
+        ctx.stroke();
+        
+        ctx.fillStyle = CONFIG.colors.accentRed;
+        ctx.font = "bold 40px 'Latin Modern Math'";
+        ctx.textAlign = "center";
+        ctx.fillText("Temporal Mismatch", CONFIG.width/2, 150);
+    }
+    // 5. The Math Solution (Integral) (56s - 85s)
+    else if (elapsed < CONFIG.duration) {
+        drawGrid(ctx);
+        const localTime = (elapsed - 56000) / 1000;
+        
+        // Title
+        ctx.fillStyle = CONFIG.colors.text;
+        ctx.textAlign = "center";
+        ctx.font = "bold 50px 'Latin Modern Math'";
+        ctx.fillText("The Solution: Integration", CONFIG.width/2, 100);
+        
+        // Formula
+        ctx.font = "italic 30px 'Latin Modern Math'";
+        ctx.fillText("Brightness = ∫ I(t) dt", CONFIG.width/2, 160);
+        
+        // Phase 1: Wrong Exposure (Variable Area)
+        if (localTime < 14) {
+             drawIntegrationMath(ctx, localTime, CONFIG.width/2, CONFIG.height/2 + 100, false);
+        } 
+        // Phase 2: Correct Exposure (Constant Area)
+        else {
+             // Transition text
+             if (localTime < 16) {
+                 ctx.fillStyle = CONFIG.colors.accentGreen;
+                 ctx.font = "bold 60px 'Latin Modern Math'";
+                 ctx.globalAlpha = (localTime - 14)/2;
+                 ctx.fillText("Set Exposure = 1/100s", CONFIG.width/2, CONFIG.height/2);
+                 ctx.globalAlpha = 1;
+             }
+             drawIntegrationMath(ctx, localTime, CONFIG.width/2, CONFIG.height/2 + 100, true);
+        }
+    } else {
+        // End
+        drawTitle(ctx, "Thanks for Watching", "Algorithm Visualized", 1);
+    }
+
+    if (elapsed < CONFIG.duration + 2000) {
+        requestAnimationFrame(animate);
+    }
+}
+
+// Initialization
+window.addEventListener('resize', resize);
+window.onload = () => {
+    loading.style.display = 'none';
+    resize();
+    requestAnimationFrame(animate);
+};
+
+</script>
+</body>
+</html>

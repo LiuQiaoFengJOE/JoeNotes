@@ -1,0 +1,62 @@
+
+core:
+  dng_version: [1,4,0,0]
+  backward_version: [1,2,0,0]
+  make: "YourMake"
+  unique_camera_model: "YourCam IMX ProtoA"
+  software: "dng_tool 1.0"
+  description: "Bayer RAW to DNG"
+
+geometry:
+  width: 1920
+  height: 1080
+  orientation: 1
+
+cfa:
+  pattern: "RGGB"
+  layout: 1
+  cfa_plane_color: [0,1,2]
+
+levels:
+  bit_depth: 12
+  black_level:
+    repeat_dim: [2,2]
+    values: [64,64,64,64]
+  white_level: 4095
+  normalize_to_16bit: true
+  clip_before_scale: true
+
+region:
+  active_area: [0, 0, 1080, 1920]
+  default_crop_origin: [0, 0]
+  default_crop_size: [1920, 1080]
+
+color:
+  calibration_illuminant1: 21
+  color_matrix1:
+    - 0.85; -0.19; -0.04
+    - -0.44; 1.33; 0.27
+    - -0.08; 0.25; 0.79
+  as_shot_neutral: [0.62, 1.0, 0.63]
+
+baseline:
+  exposure: 0.0
+  noise: 1.0
+  sharpness: 1.0
+
+exif: {}
+
+gps: {}
+
+profile:
+  hue_sat_map_dims: [1,2,1]
+  hue_sat_map_data1: [1, 0.93, 1, 1, 0.93, 1]
+  hue_sat_map_encoding: "sRGB"
+
+opcodes:
+  opcode_list2: []
+
+storage:
+  compression: 1
+  rows_per_strip: 16
+  planar_config: 1
