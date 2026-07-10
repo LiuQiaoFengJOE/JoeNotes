@@ -29,8 +29,8 @@
 		{"id":"0f08536938d1f47b","type":"text","text":"数据线：`D0~D7`，8 根；也有 10bit、12bit\n时钟：`PCLK`，1 根\n同步：`HSYNC`，1 根\n同步：`VSYNC`，1 根\n`DE`，那就再加 1 根","x":3220,"y":-300,"width":473,"height":165},
 		{"id":"a88ce36658f30d5d","type":"text","text":"MIPI CSI-2","x":2970,"y":-800,"width":160,"height":60,"color":"4"},
 		{"id":"fe5f92cca595eb15","type":"text","text":"高速串行差分接口，线少、带宽高、抗干扰更好，但联调更难","x":3310,"y":-880,"width":250,"height":60},
-		{"id":"902b38d36cf8e36e","x":3310,"y":-789,"width":388,"height":184,"type":"text","text":"`1 对时钟` = 2 根\n`N 对数据 lane` = `2N 根`\n- `1-lane MIPI`：`2 + 2 = 4 根`\n- `2-lane MIPI`：`2 + 4 = 6 根`\n- `4-lane MIPI`：`2 + 8 = 10 根`\n\n\n\n"},
-		{"id":"9b9d008a5870a7b4","x":2880,"y":-1360,"width":400,"height":330,"type":"file","file":"音视频开发/source_video_development/0c06b02f6bf1f1e231029b8b83021d82.png"}
+		{"id":"902b38d36cf8e36e","type":"text","text":"`1 对时钟` = 2 根\n`N 对数据 lane` = `2N 根`\n- `1-lane MIPI`：`2 + 2 = 4 根`\n- `2-lane MIPI`：`2 + 4 = 6 根`\n- `4-lane MIPI`：`2 + 8 = 10 根`\n\n\n\n","x":3310,"y":-789,"width":388,"height":184},
+		{"id":"9b9d008a5870a7b4","type":"file","file":"音视频开发/source_video_development/0c06b02f6bf1f1e231029b8b83021d82.png","x":2880,"y":-1360,"width":400,"height":330}
 	],
 	"edges":[
 		{"id":"137dd24ff1db6719","fromNode":"9f5cc48f67197403","fromSide":"bottom","toNode":"5c59bb90897298ea","toSide":"top","color":"4"},
